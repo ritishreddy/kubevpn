@@ -48,3 +48,40 @@ resource "aws_route_table_association" "kubevpn_subnet_associations" {
   subnet_id      = aws_subnet.kubevpn_subnets[count.index].id
   route_table_id = aws_route_table.kubevpn_route_table.id
 }
+# Define a security group that allows all inbound and outbound traffic
+resource "aws_security_group" "kubevpn_sg" {
+  name        = "kubevpn-sg"
+  description = "Security group for kubevpn instances"
+
+  # Allow all inbound traffic
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  vpc_id = aws_vpc.kubevpn.id
+}
+
+# Create three Ubuntu EC2 instances
+resource "aws_instance" "kubevpn_instances" {
+  count         = 3
+  ami           = "ami-0310483fb2b488153"  # Ubuntu 20.04 LTS AMI ID for ap-southeast-2
+  instance_type = "t2.micro"
+  subnet_id     = element(aws_subnet.kubevpn_subnets[*].id, count.index)
+
+  security_groups = [aws_security_group.kubevpn_sg.name]
+
+  tags = {
+    Name = "kubevpn-instance-${count.index}"
+  }
+}
